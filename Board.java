@@ -1,5 +1,6 @@
 import java.time.*;
 import java.awt.Color;
+import java.util.Random;
 
 public class Board {
     private Color[][] board;
@@ -13,8 +14,13 @@ public class Board {
 
     private int level = 1;
 
+    private Random randGen;
+
     // frames per gridcell down
     private int gravityFrames = 43;
+    
+    private final int fastFallGravityFrames = 5;
+    public boolean fastFall = false;
     
     private static final double secondsPerFrame = 1.0 / 60;
 
@@ -27,12 +33,36 @@ public class Board {
 
         posX = x;
         posY = y;
+
+        randGen = new Random();
     }
 
-    public void update() {
-        if (Duration.between(lastFall, Instant.now()).toSeconds() >= (gravityFrames * secondsPerFrame)) {
-            fallPiece();
+    public void update() {  
+        if (Duration.between(lastFall, Instant.now()).toMillis() / 1000.0 >= ((fastFall ? fastFallGravityFrames : gravityFrames) * secondsPerFrame)) {
             lastFall = Instant.now();
+            fallPiece();
+        }
+    }
+
+    // clears filled rows
+    private void clearFilledRows() {
+        // for (int row = numRows() - 1; row >= 0; row--) {
+        for (int row = 0; row < numRows(); row++) {
+            boolean rowFilled = true;
+            for (int col = 0; col < numCols(); col++) {
+                if (!squareExists(row, col)) {
+                    rowFilled = false;
+                    break;
+                }
+            }
+            if (rowFilled) {
+                for (int r = row; r > 0; r--) {
+                    // board[r] = board[r-1];
+                    for (int col = 0; col < numCols(); col++) {
+                        board[r][col] = board[r-1][col];
+                    }
+                }
+            }
         }
     }
 
@@ -49,24 +79,44 @@ public class Board {
     }
 
     public void rotateClockwise() {
+        int lastRotationIndex = currentPiece.currentShape;
         currentPiece.rotateClockwise();
-        resetClip();
+        if (!testWallKicks(lastRotationIndex, false)) {
+            currentPiece.rotateCounterClockwise();
+        }
     }
 
     public void rotateCounterclockwise() {
+        int lastRotationIndex = currentPiece.currentShape;
         currentPiece.rotateCounterClockwise();
-        resetClip();
+        if (!testWallKicks(lastRotationIndex, true)) {
+            currentPiece.rotateClockwise();
+        }
     }
 
-    // moves the piece back into the board
-    // if it's clipping the wall
-    private void resetClip() {
-        while (pieceClippingLeft()) {
-            pieceX++;
+    // attempts to relocate the piece based on wall kicks
+    public boolean testWallKicks(int lastRotation, boolean counterClockwise) {
+        int kickIndex = 0;
+        int[][] relevantKicks = currentPiece.getRelevantWallKick(lastRotation, counterClockwise);
+
+        int ogPieceX = pieceX;
+        int ogPieceY = pieceY;
+
+        while (kickIndex < relevantKicks.length && (pieceClippingLeft() || pieceClippingRight() || pieceClippingBottom())) {
+            pieceX = ogPieceX + relevantKicks[kickIndex][0];
+            pieceY = ogPieceY - relevantKicks[kickIndex][1];
+
+            kickIndex++;
         }
 
-        while (pieceClippingRight()) {
-            pieceX--;
+        // returns true if a valid kick is found,
+        // otherwise moves piece back and returns false
+        if (kickIndex < relevantKicks.length) {
+            return true;
+        } else {
+            pieceX = ogPieceX;
+            pieceY = ogPieceY;
+            return false;
         }
     }
 
@@ -108,16 +158,55 @@ public class Board {
         return false;
     }
 
-    // checks if currentPiece is next to the left wall
-    private boolean pieceCollidingLeft() {
-        if (pieceX > 0) {
-            return false;
+    // checks if currentPiece is clipping the bottom
+    private boolean pieceClippingBottom() {
+        // int edgeRow = pieceY - 4 - numRows();
+        int edgeRow = numRows() - 1 - pieceY;
+
+        // check clipping the wall
+        if (edgeRow >= 0 && edgeRow <= 3) {
+            for (int col = 0; col < 4; col++) {
+                for (int row = edgeRow + 1; row < 4; row++) {
+                    if (currentPiece.getShapeVal(row, col) > 0) {
+                        return true;
+                    }
+                }
+            }
         }
 
-        int col = -1 * pieceX;
+        // check clipping other pieces
         for (int row = 0; row < 4; row++) {
-            if (currentPiece.getShapeVal(row, col) > 0) {
-                return true;
+            for (int col = 0; col < 4; col++) {
+                if (currentPiece.getShapeVal(row, col) > 0) {
+                    if (squareExists(pieceY + row, pieceX + col)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // checks if currentPiece is next to the left wall
+    private boolean pieceCollidingLeft() {
+        int edgeCol = -1 * pieceX;
+
+        if (edgeCol >= 0 && edgeCol <= 3) {
+            for (int row = 0; row < 4; row++) {
+                if (currentPiece.getShapeVal(row, edgeCol) > 0) {
+                    return true;
+                }
+            }
+        }
+
+        for (int col = 0; col < 4; col++) {
+            for (int row = 0; row < 4; row++) {
+                if (currentPiece.getShapeVal(row, col) > 0) {
+                    if (squareExists(pieceY + row, pieceX + col - 1)) {
+                        return true;
+                    }
+                }
             }
         }
         
@@ -126,14 +215,23 @@ public class Board {
 
     // checks if currentPiece is next to the right wall
     private boolean pieceCollidingRight() {
-        if (pieceX + 5 <= numCols()) {
-            return false;
+        int edgeCol = numCols() - 1 - pieceX;
+
+        if (edgeCol >= 0 && edgeCol <= 3) {
+            for (int row = 0; row < 4; row++) {
+                if (currentPiece.getShapeVal(row, edgeCol) > 0) {
+                    return true;
+                }
+            }
         }
-        
-        int col = numCols() - 1 - pieceX;
-        for (int row = 0; row < 4; row++) {
-            if (currentPiece.getShapeVal(row, col) > 0) {
-                return true;
+
+        for (int col = 3; col >= 0; col--) {
+            for (int row = 0; row < 4; row++) {
+                if (currentPiece.getShapeVal(row, col) > 0) {
+                    if (squareExists(pieceY + row, pieceX + col + 1)) {
+                        return true;
+                    }
+                }
             }
         }
 
@@ -142,19 +240,38 @@ public class Board {
 
     // checks if currentPiece is next to the bottom of the grid
     private boolean pieceCollidingBottom() {
-        if (pieceY + 3 < numRows() - 1) {
-            return false;
-        }
-
+        // checks if the piece is bordering the bottom of the grid
         int edgeRow = numRows() - 1 - pieceY;
 
-        for (int col = 0; col < 4; col++) {
-            if (currentPiece.getShapeVal(edgeRow, col) > 0) {
-                return true;
+        if (edgeRow >= 0 && edgeRow <= 3) {
+            for (int col = 0; col < 4; col++) {
+                if (currentPiece.getShapeVal(edgeRow, col) > 0) {
+                    return true;
+                }
             }
         }
 
-        return false;
+        // checks if the piece is bordering another piece
+        for (int row = 3; row >= 0; row--) {
+            for (int col = 3; col >= 0; col--) {
+                if (currentPiece.getShapeVal(row, col) > 0) {
+                    if (squareExists(pieceY + row + 1, pieceX + col)) {
+                        return true;
+                    }
+                }
+            }    
+        }
+
+        return false;   
+    }
+
+    public void instantFall() {
+        while (!pieceCollidingBottom()) {
+            pieceY++;
+        }
+
+        placePiece();
+        getNewPiece();
     }
 
     private void fallPiece() {
@@ -168,13 +285,14 @@ public class Board {
 
     // places currentPiece in the board
     private void placePiece() {
-        for (int col = pieceX; col < pieceX + 4; col++) {
-            for (int row = pieceY; row < pieceY + 4; row++) {
-                if (currentPiece.getShapeVal(row - pieceY, col - pieceX) > 0) {
-                    board[row][col] = currentPiece.color;
+        for (int col = 0; col < 4; col++) {
+            for (int row = 0; row < 4; row++) {
+                if (currentPiece.getShapeVal(row, col) > 0) {
+                    board[row + pieceY][col + pieceX] = currentPiece.color;
                 }
             }
         }
+        clearFilledRows();
     }
 
     // progresses fall speed based on level
@@ -229,10 +347,14 @@ public class Board {
     }
 
     public void getNewPiece() {
+        currentPiece = null;
+
         pieceX = 3;
         pieceY = 0;
 
-        int randPiece = (int) (Math.random() * 7);
+        // int randPiece = (int) (Math.random() * 7);
+        int randPiece = randGen.nextInt(7);
+        // int randPiece = 0;
 
         switch (randPiece) {
             case 0:

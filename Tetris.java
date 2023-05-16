@@ -14,6 +14,9 @@ public class Tetris implements KeyListener {
 
     boolean leftDown = false, rightDown = false, upDown = false, downDown = false;
     boolean lastLeft = false, lastRight = false;
+
+    boolean spaceDown = false;
+
     Instant lastLeftPress;
     Instant lastRightPress;
     double moveDelay = moveSecondDelay;
@@ -120,9 +123,22 @@ public class Tetris implements KeyListener {
 
             // down arrow
             case 40:
+                board.fastFall = true;
+                break;
+
+            // Z key
+            case 90:
                 if (!downDown) {
                     board.rotateCounterclockwise();
                     downDown = true;
+                }
+                break;
+
+            // space key
+            case 32:
+                if (!spaceDown) {
+                    board.instantFall();
+                    spaceDown = true;
                 }
                 break;
         }
@@ -149,7 +165,17 @@ public class Tetris implements KeyListener {
 
             // down arrow
             case 40:
+                board.fastFall = false;
+                break;
+
+            // Z key
+            case 90:
                 downDown = false;
+                break;
+
+            // space key
+            case 32:
+                spaceDown = false;
                 break;
         }
     }
@@ -176,7 +202,7 @@ public class Tetris implements KeyListener {
                 g.setColor(currentPiece.color);
                 for (int row = 0; row < 4; row++) {
                     for (int col = 0; col < 4; col++) {
-                        if (currentPiece.shapes[currentPiece.currentShape][row * 4 + col] == 1) {
+                        if (currentPiece.getShapeVal(row, col) > 0) {
                             g.fillRect(board.posX + (board.getPieceX() + col) * 30, board.posY + (board.getPieceY() + row) * 30, 30, 30);
                         }
                     }
