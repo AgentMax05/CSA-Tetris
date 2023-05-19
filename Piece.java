@@ -14,7 +14,7 @@ public class Piece {
     // wall kicks found here: https://tetris.fandom.com/wiki/SRS
 
     // wall kicks are ordered in counterclockwise first, clockwise second
-    // note that Y-transformations are assuming positive Y is upwards (which is false in this case)
+    // Y-transformations are assuming positive Y is upwards (which is false in this case)
     public int[][][][] wallKicks = {
         // wall kicks going from 0
         {
@@ -66,5 +66,9 @@ public class Piece {
 
     public int getShapeVal(int row, int col) {
         return shapes[currentShape][row * 4 + col];
+    }
+
+    public void resetRotation() {
+        currentShape = 0;
     }
 }

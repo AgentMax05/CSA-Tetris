@@ -1,9 +1,14 @@
 import javax.swing.*;
-import java.awt.Graphics2D;
+// import java.awt.Graphics2D;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontFormatException;
+import java.awt.GraphicsEnvironment;
 import java.awt.event.*;
 import java.time.*;
+import java.io.File;
+import java.io.IOException;
 
 // public class Tetris extends JFrame {
 public class Tetris implements KeyListener {
@@ -12,8 +17,22 @@ public class Tetris implements KeyListener {
     JFrame frame;
     private Thread gameLoop;
 
+    // 0: score
+    // 1: lines
+    // 2: level
+    // 3: game over
+    JLabel[] gameLabels;
+    String[] labelStarters = {
+        "Score:",
+        "Lines:",
+        "Level:"
+    };
+
+    private static Font gameFont;
+
     boolean leftDown = false, rightDown = false, upDown = false, downDown = false;
     boolean lastLeft = false, lastRight = false;
+    boolean cDown = false;
 
     boolean spaceDown = false;
 
@@ -29,26 +48,53 @@ public class Tetris implements KeyListener {
     private static final int WINDOW_WIDTH = 800;
     private static final int WINDOW_HEIGHT = 700;
 
+    private static int boardX = (WINDOW_WIDTH - 10 * gridCellSize) / 2;
+    private static int boardY = (WINDOW_HEIGHT - 20 * gridCellSize) / 2;
+
     private DrawPane pane;
 
     public Tetris() {
+        try {
+            gameFont = Font.createFont(Font.TRUETYPE_FONT, new File("./PublicPixel-z84yD.ttf"));
+            GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(gameFont);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (FontFormatException e) {
+            e.printStackTrace();
+        }
+
         lastLeftPress = Instant.now();
         lastRightPress = Instant.now();
 
         frame = new JFrame("Tetris");
+        frame.setBackground(Color.BLACK);
+        frame.getContentPane().setBackground(Color.BLACK);
 
-        board = new Board((WINDOW_WIDTH - 10 * gridCellSize) / 2, (WINDOW_HEIGHT - 20 * gridCellSize) / 2);
+        board = new Board(boardX, boardY);
 
-        board.getNewPiece();
+        gameLabels = new JLabel[4];
 
         pane = new DrawPane();
         pane.setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+        pane.setLayout(null);
+
         
+        for (int i = 0; i < gameLabels.length; i++) {
+            JLabel newLabel = new JLabel();
+            newLabel.setForeground(Color.WHITE);
+            newLabel.setFont(gameFont.deriveFont(16f));
+            newLabel.setAlignmentX(0f);
+            newLabel.setBounds(30, 0, board.posX, board.posY + 350 + 150 * i);
+            gameLabels[i] = newLabel;
+            pane.add(newLabel);
+        }
+
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
         frame.setResizable(false);
-
+        
         frame.add(pane);
+
         frame.pack();
         frame.setVisible(true);
 
@@ -56,12 +102,20 @@ public class Tetris implements KeyListener {
 
         frame.setLocationRelativeTo(null);
 
-        // setup keybindings
-        // pane.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0, false), )
-
         gameLoop = new Thread(() -> {
             while (true) {
                 board.update();
+
+                if (board.isGameOver() && gameLabels[3].getText().length() == 0) {
+                    gameLabels[3].setText("<html>GAME OVER<p><br>[ENTER]</p><p><br>for new game</p></html>");
+                } else if (!board.isGameOver() && gameLabels[3].getText().length() > 0) {
+                    gameLabels[3].setText("");
+                }
+
+                int[] data = {board.getScore(), board.getLinesCleared(), board.getLevel()};
+                for (int i = 0; i < data.length; i++) {
+                    gameLabels[i].setText(labelStarters[i] + " " + data[i]);
+                }
 
                 this.pane.repaint();
 
@@ -141,6 +195,21 @@ public class Tetris implements KeyListener {
                     spaceDown = true;
                 }
                 break;
+
+            // c key
+            case 67:
+                if (!cDown) {
+                    board.holdPiece();
+                    cDown = true;
+                }
+                break;
+
+            // enter key
+            case 10:
+                if (board.isGameOver()) {
+                    board = new Board(boardX, boardY);
+                }
+                break;
         }
     }
 
@@ -177,6 +246,11 @@ public class Tetris implements KeyListener {
             case 32:
                 spaceDown = false;
                 break;
+
+            // c key
+            case 67:
+                cDown = false;
+                break;
         }
     }
 
@@ -194,7 +268,6 @@ public class Tetris implements KeyListener {
 
             g.setColor(new Color(0, 0, 0, 255));
             g.fillRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
-
             
             // draw active piece
             Piece currentPiece = board.getPiece();
@@ -221,7 +294,39 @@ public class Tetris implements KeyListener {
                     g.drawRect(board.posX + col * 30, board.posY + row * 30, 30, 30);
                 }
             }
+
+            // draw held piece
+            g.setColor(Color.WHITE);
+            g.drawRect(board.posX + board.numCols() * 30 + 90, board.posY + board.numRows() * 30 - 140, 140, 140);
             
+            if (board.isHeldPiece()) {
+                Piece heldPiece = board.getHeldPiece();
+                g.setColor(heldPiece.color);
+                for (int row = 0; row < 4; row++) {
+                    for (int col = 0; col < 4; col++) {
+                        if (heldPiece.getShapeVal(row, col) > 0) {
+                            g.fillRect(board.posX + board.numCols() * 30 + 100 + col * 30, board.posY - 120 + board.numRows() * 30 + row * 30, 30, 30);
+                        }
+                    }
+                }
+            }
+
+            // draw next pieces
+            g.setColor(Color.WHITE);
+            g.drawRect(board.posX + board.numCols() * 30 + 90, board.posY, 140, 420);
+            Piece[] nextPieces = board.getNextPieces();
+            
+            for (int piece = 0; piece < nextPieces.length; piece++) {
+                Piece nextPiece = nextPieces[piece];
+                g.setColor(nextPiece.color);
+                for (int row = 0; row < 4; row++) {
+                    for (int col = 0; col < 4; col++) {
+                        if (nextPiece.getShapeVal(row, col) > 0) {
+                            g.fillRect(board.posX + board.numCols() * 30 + 100 + col * 30, board.posY + 20 + row * 30 + 150 * piece, 30, 30);
+                        }
+                    }
+                }
+            }
         }
         
         @Override
@@ -231,7 +336,6 @@ public class Tetris implements KeyListener {
     }
 
     public static void main(String[] args) {
-        // Tetris game = new Tetris();
         SwingUtilities.invokeLater(Tetris::new);
     }
 }

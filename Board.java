@@ -1,12 +1,20 @@
 import java.time.*;
 import java.awt.Color;
-import java.util.Random;
+import java.security.SecureRandom;
 
 public class Board {
     private Color[][] board;
 
     private int score;
+    private int linesCleared = 0;
+
     private Piece currentPiece;
+    private Piece[] nextPieces;
+
+    private Piece heldPiece = null;
+
+    private boolean pieceHeld = false;
+
     private int pieceX, pieceY;
     public final int posX, posY;
 
@@ -14,7 +22,7 @@ public class Board {
 
     private int level = 1;
 
-    private Random randGen;
+    private SecureRandom randGen;
 
     // frames per gridcell down
     private int gravityFrames = 43;
@@ -23,6 +31,8 @@ public class Board {
     public boolean fastFall = false;
     
     private static final double secondsPerFrame = 1.0 / 60;
+
+    private boolean gameOver = false;
 
     public Board(int x, int y) {
         board = new Color[20][10];
@@ -34,19 +44,71 @@ public class Board {
         posX = x;
         posY = y;
 
-        randGen = new Random();
+        nextPieces = new Piece[3];
+
+        randGen = new SecureRandom();
+
+        getNewPiece();
+    }
+
+    public int getScore() {
+        return score;
     }
 
     public void update() {  
-        if (Duration.between(lastFall, Instant.now()).toMillis() / 1000.0 >= ((fastFall ? fastFallGravityFrames : gravityFrames) * secondsPerFrame)) {
+        if (!gameOver && Duration.between(lastFall, Instant.now()).toMillis() / 1000.0 >= ((fastFall ? fastFallGravityFrames : gravityFrames) * secondsPerFrame)) {
             lastFall = Instant.now();
             fallPiece();
         }
     }
 
+    public boolean isHeldPiece() {
+        return heldPiece != null;
+    }
+
+    public Piece getHeldPiece() {
+        return heldPiece;
+    }
+
+    public Piece[] getNextPieces() {
+        return nextPieces;
+    }
+
+    public int getLevel() {
+        return level;
+    }
+
+    public boolean isGameOver() {
+        return gameOver;
+    }
+
+    // holds a piece
+    public void holdPiece() {
+        if (gameOver) return;
+
+        if (!pieceHeld) {
+            pieceX = 3;
+            pieceY = 0;
+            currentPiece.resetRotation();
+            if (heldPiece != null) {
+                Piece temp = heldPiece;
+                heldPiece = currentPiece;
+                currentPiece = temp;
+            } else {
+                heldPiece = currentPiece;
+                getNewPiece();
+            }
+            pieceHeld = true;
+        }
+    }
+
+    public int getLinesCleared() {
+        return linesCleared;
+    }
+
     // clears filled rows
     private void clearFilledRows() {
-        // for (int row = numRows() - 1; row >= 0; row--) {
+        int numRowsCleared = 0;
         for (int row = 0; row < numRows(); row++) {
             boolean rowFilled = true;
             for (int col = 0; col < numCols(); col++) {
@@ -56,6 +118,7 @@ public class Board {
                 }
             }
             if (rowFilled) {
+                numRowsCleared++;
                 for (int r = row; r > 0; r--) {
                     // board[r] = board[r-1];
                     for (int col = 0; col < numCols(); col++) {
@@ -64,21 +127,44 @@ public class Board {
                 }
             }
         }
+
+        // TODO: add T-spin scoring
+        if (numRowsCleared == 1) {
+            score += 100 * level;
+        } else if (numRowsCleared == 2) {
+            score += 300 * level;
+        } else if (numRowsCleared == 3) {
+            score += 500 * level;
+        } else if (numRowsCleared == 4) {
+            score += 800 * level;
+        }
+
+        linesCleared += numRowsCleared;
+
+        if (linesCleared > level * 10) {
+            nextLevel();
+        }
     }
 
     public void moveLeft() {
+        if (gameOver) return;
+
         if (!pieceCollidingLeft()) {
             pieceX--;
         }
     }
 
     public void moveRight() {
+        if (gameOver) return;
+
         if (!pieceCollidingRight()) {
             pieceX++;
         }
     }
 
     public void rotateClockwise() {
+        if (gameOver) return;
+
         int lastRotationIndex = currentPiece.currentShape;
         currentPiece.rotateClockwise();
         if (!testWallKicks(lastRotationIndex, false)) {
@@ -87,6 +173,8 @@ public class Board {
     }
 
     public void rotateCounterclockwise() {
+        if (gameOver) return;
+
         int lastRotationIndex = currentPiece.currentShape;
         currentPiece.rotateCounterClockwise();
         if (!testWallKicks(lastRotationIndex, true)) {
@@ -266,8 +354,11 @@ public class Board {
     }
 
     public void instantFall() {
+        if (gameOver) return;
+
         while (!pieceCollidingBottom()) {
             pieceY++;
+            score += 2 * level;
         }
 
         placePiece();
@@ -277,6 +368,7 @@ public class Board {
     private void fallPiece() {
         if (!pieceCollidingBottom()) {
             pieceY++;
+            score += fastFall ? level : 0;
         } else {
             placePiece();
             getNewPiece();
@@ -293,6 +385,8 @@ public class Board {
             }
         }
         clearFilledRows();
+
+        pieceHeld = false;
     }
 
     // progresses fall speed based on level
@@ -346,39 +440,48 @@ public class Board {
         return pieceY;
     }
 
-    public void getNewPiece() {
-        currentPiece = null;
+    private Piece pieceFromNum(int pieceNum) {
+        switch (pieceNum) {
+            case 0:
+                return new IPiece();
+            case 1:
+                return new JPiece();
+            case 2:
+                return new LPiece();
+            case 3:
+                return new OPiece();
+            case 4:
+                return new SPiece();
+            case 5:
+                return new TPiece();
+            case 6:
+                return new ZPiece();
+        }
+        return null;
+    }
 
+    public void getNewPiece() {
         pieceX = 3;
         pieceY = 0;
 
-        // int randPiece = (int) (Math.random() * 7);
         int randPiece = randGen.nextInt(7);
-        // int randPiece = 0;
 
-        switch (randPiece) {
-            case 0:
-                currentPiece = new IPiece();
-                break;
-            case 1:
-                currentPiece = new JPiece();
-                break;
-            case 2:
-                currentPiece = new LPiece();
-                break;
-            case 3:
-                currentPiece = new OPiece();
-                break;
-            case 4:
-                currentPiece = new SPiece();
-                break;
-            case 5:
-                currentPiece = new TPiece();
-                break;
-            case 6:
-                currentPiece = new ZPiece();
-                break;
+        if (nextPieces[0] != null) {
+            currentPiece = nextPieces[0];
+            // nextPieces[ = pieceFromNum(randPiece);
+            nextPieces[0] = nextPieces[1];
+            nextPieces[1] = nextPieces[2];
+            nextPieces[2] = pieceFromNum(randPiece);
+        } else {
+            currentPiece = pieceFromNum(randPiece);
+            for (int i = 0; i < 3; i++) {
+                nextPieces[i] = pieceFromNum(randGen.nextInt(7));
+            }
+        }
+
+        if (pieceClippingRight() || pieceClippingLeft() || pieceClippingBottom()) {
+            gameOver = true;
+            currentPiece = null;
         }
     }
-
 }
