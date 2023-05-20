@@ -149,16 +149,18 @@ public class Board {
     public void moveLeft() {
         if (gameOver) return;
 
-        if (!pieceCollidingLeft()) {
-            pieceX--;
+        pieceX--;
+        if (pieceClipping()) {
+            pieceX++;
         }
     }
 
     public void moveRight() {
         if (gameOver) return;
 
-        if (!pieceCollidingRight()) {
-            pieceX++;
+        pieceX++;
+        if (pieceClipping()) {
+            pieceX--;
         }
     }
 
@@ -190,7 +192,7 @@ public class Board {
         int ogPieceX = pieceX;
         int ogPieceY = pieceY;
 
-        while (kickIndex < relevantKicks.length && (pieceClippingLeft() || pieceClippingRight() || pieceClippingBottom())) {
+        while (kickIndex < relevantKicks.length && pieceClipping()) {
             pieceX = ogPieceX + relevantKicks[kickIndex][0];
             pieceY = ogPieceY - relevantKicks[kickIndex][1];
 
@@ -208,168 +210,49 @@ public class Board {
         }
     }
 
-    // checks if a rotated piece would clip the wall on the left
-    private boolean pieceClippingLeft() {
-        if (pieceX >= 0) {
-            return false;
-        }
-        
-        int edgeCol = -1 * pieceX;
-
+    // checks if currentPiece is clipping another piece
+    private boolean pieceClipping() {
         for (int row = 0; row < 4; row++) {
-            for (int col = 0; col < edgeCol; col++) {
-                if (currentPiece.getShapeVal(row, col) > 0) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    // checks if a rotated piece would clip the wall on the right
-    private boolean pieceClippingRight() {
-        if (pieceX + 4 <= numCols() - 1) {
-            return false;
-        } 
-
-        int edgeCol = numCols() - 1 - pieceX;
-        
-        for (int row = 0; row < 4; row++) {
-            for (int col = 3; col > edgeCol; col--) {
-                if (currentPiece.getShapeVal(row, col) > 0) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    // checks if currentPiece is clipping the bottom
-    private boolean pieceClippingBottom() {
-        // int edgeRow = pieceY - 4 - numRows();
-        int edgeRow = numRows() - 1 - pieceY;
-
-        // check clipping the wall
-        if (edgeRow >= 0 && edgeRow <= 3) {
             for (int col = 0; col < 4; col++) {
-                for (int row = edgeRow + 1; row < 4; row++) {
-                    if (currentPiece.getShapeVal(row, col) > 0) {
+                if (currentPiece.getShapeVal(row, col) > 0) {
+                    // make sure x position is in bounds
+                    if (pieceX + col < 0 || pieceX + col >= numCols()) {
+                        return true;
+                    } 
+                    // make sure y position is in bounds
+                    if (pieceY + row < 0 || pieceY + row >= numRows()) {
                         return true;
                     }
-                }
-            }
-        }
-
-        // check clipping other pieces
-        for (int row = 0; row < 4; row++) {
-            for (int col = 0; col < 4; col++) {
-                if (currentPiece.getShapeVal(row, col) > 0) {
+                    // check if piece is clipping
                     if (squareExists(pieceY + row, pieceX + col)) {
                         return true;
                     }
                 }
             }
         }
-
         return false;
-    }
-
-    // checks if currentPiece is next to the left wall
-    private boolean pieceCollidingLeft() {
-        int edgeCol = -1 * pieceX;
-
-        if (edgeCol >= 0 && edgeCol <= 3) {
-            for (int row = 0; row < 4; row++) {
-                if (currentPiece.getShapeVal(row, edgeCol) > 0) {
-                    return true;
-                }
-            }
-        }
-
-        for (int col = 0; col < 4; col++) {
-            for (int row = 0; row < 4; row++) {
-                if (currentPiece.getShapeVal(row, col) > 0) {
-                    if (squareExists(pieceY + row, pieceX + col - 1)) {
-                        return true;
-                    }
-                }
-            }
-        }
-        
-        return false;
-    }
-
-    // checks if currentPiece is next to the right wall
-    private boolean pieceCollidingRight() {
-        int edgeCol = numCols() - 1 - pieceX;
-
-        if (edgeCol >= 0 && edgeCol <= 3) {
-            for (int row = 0; row < 4; row++) {
-                if (currentPiece.getShapeVal(row, edgeCol) > 0) {
-                    return true;
-                }
-            }
-        }
-
-        for (int col = 3; col >= 0; col--) {
-            for (int row = 0; row < 4; row++) {
-                if (currentPiece.getShapeVal(row, col) > 0) {
-                    if (squareExists(pieceY + row, pieceX + col + 1)) {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
-    // checks if currentPiece is next to the bottom of the grid
-    private boolean pieceCollidingBottom() {
-        // checks if the piece is bordering the bottom of the grid
-        int edgeRow = numRows() - 1 - pieceY;
-
-        if (edgeRow >= 0 && edgeRow <= 3) {
-            for (int col = 0; col < 4; col++) {
-                if (currentPiece.getShapeVal(edgeRow, col) > 0) {
-                    return true;
-                }
-            }
-        }
-
-        // checks if the piece is bordering another piece
-        for (int row = 3; row >= 0; row--) {
-            for (int col = 3; col >= 0; col--) {
-                if (currentPiece.getShapeVal(row, col) > 0) {
-                    if (squareExists(pieceY + row + 1, pieceX + col)) {
-                        return true;
-                    }
-                }
-            }    
-        }
-
-        return false;   
     }
 
     public void instantFall() {
         if (gameOver) return;
 
-        while (!pieceCollidingBottom()) {
+        while (!pieceClipping()) {
             pieceY++;
             score += 2 * level;
         }
+        pieceY--;
+        score -= 2 * level;
 
         placePiece();
         getNewPiece();
     }
 
     private void fallPiece() {
-        if (!pieceCollidingBottom()) {
-            pieceY++;
+        pieceY++;
+        if (!pieceClipping()) {
             score += fastFall ? level : 0;
         } else {
+            pieceY--;
             placePiece();
             getNewPiece();
         }
@@ -479,7 +362,7 @@ public class Board {
             }
         }
 
-        if (pieceClippingRight() || pieceClippingLeft() || pieceClippingBottom()) {
+        if (pieceClipping()) {
             gameOver = true;
             currentPiece = null;
         }
