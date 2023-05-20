@@ -102,6 +102,7 @@ public class Board {
             }
             pieceHeld = true;
         }
+        calcGhostY();
     }
 
     public int getLinesCleared() {
