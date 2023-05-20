@@ -53,7 +53,12 @@ public class Tetris implements KeyListener {
 
     private DrawPane pane;
 
+    private SoundPlayer player;
+
     public Tetris() {
+        player = new SoundPlayer("./tetris_music_wav.wav");
+        player.setLoopStartEnd(6000, 3408931);
+
         try {
             gameFont = Font.createFont(Font.TRUETYPE_FONT, new File("./PublicPixel-z84yD.ttf"));
             GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(gameFont);
@@ -112,6 +117,10 @@ public class Tetris implements KeyListener {
                     gameLabels[3].setText("");
                 }
 
+                if (board.isGameOver() && player.isPlaying()) {
+                    player.pause();
+                }
+
                 int[] data = {board.getScore(), board.getLinesCleared(), board.getLevel()};
                 for (int i = 0; i < data.length; i++) {
                     gameLabels[i].setText(labelStarters[i] + " " + data[i]);
@@ -152,6 +161,7 @@ public class Tetris implements KeyListener {
         });
 
         gameLoop.start();
+        player.startLoop(true);
     }
 
     // handle keyboard input
@@ -208,6 +218,8 @@ public class Tetris implements KeyListener {
             case 10:
                 if (board.isGameOver()) {
                     board = new Board(boardX, boardY);
+                    player.reset();
+                    player.resume();
                 }
                 break;
         }
