@@ -28,7 +28,7 @@ public class TPiece extends Piece {
         }
     };
 
-    private static Color color = new Color(152, 0, 255);
+    private static Color color = new Color(128, 0, 128);
 
     public TPiece() {
         super(shapes, color);

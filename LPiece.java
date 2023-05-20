@@ -28,7 +28,7 @@ public class LPiece extends Piece {
         }
     };
 
-    private static Color color = new Color(255, 170, 0);
+    private static Color color = new Color(255, 127, 0);
 
     public LPiece() {
         super(shapes, color);

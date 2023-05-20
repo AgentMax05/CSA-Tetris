@@ -11,7 +11,7 @@ public class OPiece extends Piece {
     };
 
     // private static Color color = new Color(255, 255, 0);
-    private static Color color = new Color(247, 211, 8);
+    private static Color color = new Color(255, 255, 0);
 
     public OPiece() {
         super(shapes, color);
