@@ -281,19 +281,25 @@ public class Tetris implements KeyListener {
             g.setColor(new Color(0, 0, 0, 255));
             g.fillRect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
             
-            // draw active piece
+            // draw active and ghost piece
             Piece currentPiece = board.getPiece();
             if (currentPiece != null) {
-                g.setColor(currentPiece.color);
+                Color pieceColor = currentPiece.color;
+                Color ghostColor = pieceColor.darker().darker().darker();
                 for (int row = 0; row < 4; row++) {
                     for (int col = 0; col < 4; col++) {
                         if (currentPiece.getShapeVal(row, col) > 0) {
+                            // draw ghost piece
+                            g.setColor(ghostColor);
+                            g.fillRect(board.posX + (board.getPieceX() + col) * 30, board.posY + (board.getGhostY() + row) * 30, 30, 30);
+                            // draw active piece
+                            g.setColor(pieceColor);
                             g.fillRect(board.posX + (board.getPieceX() + col) * 30, board.posY + (board.getPieceY() + row) * 30, 30, 30);
                         }
                     }
                 }
             }
-
+            
             // draw grid
             g.setColor(new Color(255, 255, 255, 255));
             for (int row = 0; row < board.numRows(); row++) {

@@ -16,6 +16,8 @@ public class Board {
     private boolean pieceHeld = false;
 
     private int pieceX, pieceY;
+    private int ghostY;
+
     public final int posX, posY;
 
     private Instant lastFall;
@@ -152,6 +154,8 @@ public class Board {
         pieceX--;
         if (pieceClipping()) {
             pieceX++;
+        } else {
+            calcGhostY();
         }
     }
 
@@ -161,6 +165,8 @@ public class Board {
         pieceX++;
         if (pieceClipping()) {
             pieceX--;
+        } else {
+            calcGhostY();
         }
     }
 
@@ -171,6 +177,8 @@ public class Board {
         currentPiece.rotateClockwise();
         if (!testWallKicks(lastRotationIndex, false)) {
             currentPiece.rotateCounterClockwise();
+        } else {
+            calcGhostY();
         }
     }
 
@@ -181,6 +189,8 @@ public class Board {
         currentPiece.rotateCounterClockwise();
         if (!testWallKicks(lastRotationIndex, true)) {
             currentPiece.rotateClockwise();
+        } else {
+            calcGhostY();
         }
     }
 
@@ -231,6 +241,21 @@ public class Board {
             }
         }
         return false;
+    }
+
+    private void calcGhostY() {
+        if (currentPiece == null) return;
+
+        int ogY = pieceY;
+        while (!pieceClipping()) {
+            pieceY++;
+        }
+        ghostY = pieceY - 1;
+        pieceY = ogY;
+    }
+
+    public int getGhostY() {
+        return ghostY;
     }
 
     public void instantFall() {
@@ -343,7 +368,7 @@ public class Board {
         return null;
     }
 
-    public void getNewPiece() {
+    private void getNewPiece() {
         pieceX = 3;
         pieceY = 0;
 
@@ -366,5 +391,7 @@ public class Board {
             gameOver = true;
             currentPiece = null;
         }
+        
+        calcGhostY();
     }
 }
