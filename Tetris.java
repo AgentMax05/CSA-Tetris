@@ -285,7 +285,7 @@ public class Tetris implements KeyListener {
             Piece currentPiece = board.getPiece();
             if (currentPiece != null) {
                 Color pieceColor = currentPiece.color;
-                Color ghostColor = pieceColor.darker().darker().darker();
+                Color ghostColor = pieceColor.darker().darker();
                 for (int row = 0; row < 4; row++) {
                     for (int col = 0; col < 4; col++) {
                         if (currentPiece.getShapeVal(row, col) > 0) {
