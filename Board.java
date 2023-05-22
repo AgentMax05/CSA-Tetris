@@ -36,21 +36,35 @@ public class Board {
 
     private boolean gameOver = false;
 
+    private int[] pieceBag;
+    private int randPieceIndex;
+
     public Board(int x, int y) {
         board = new Color[20][10];
-
         currentPiece = null;
-
         lastFall = Instant.now();
 
         posX = x;
         posY = y;
 
         nextPieces = new Piece[3];
-
         randGen = new SecureRandom();
 
+        pieceBag = new int[]{0, 1, 2, 3, 4, 5, 6};
+        shuffleBag();
+
         getNewPiece();
+    }
+
+    // shuffles the piece bag
+    private void shuffleBag() {
+        for (int i = 0; i < pieceBag.length; i++) {
+            int randIndex = randGen.nextInt(pieceBag.length);
+            int temp = pieceBag[randIndex];
+            pieceBag[randIndex] = pieceBag[i];
+            pieceBag[i] = temp;
+        }
+        randPieceIndex = pieceBag.length - 1;
     }
 
     public int getScore() {
@@ -369,22 +383,28 @@ public class Board {
         return null;
     }
 
+    private Piece getRandPiece() {
+        if (randPieceIndex < 0) {
+            shuffleBag();
+        }
+        Piece randPiece = pieceFromNum(pieceBag[randPieceIndex]);
+        randPieceIndex--;
+        return randPiece;
+    }
+
     private void getNewPiece() {
         pieceX = 3;
         pieceY = 0;
 
-        int randPiece = randGen.nextInt(7);
-
         if (nextPieces[0] != null) {
             currentPiece = nextPieces[0];
-            // nextPieces[ = pieceFromNum(randPiece);
             nextPieces[0] = nextPieces[1];
             nextPieces[1] = nextPieces[2];
-            nextPieces[2] = pieceFromNum(randPiece);
+            nextPieces[2] = getRandPiece();
         } else {
-            currentPiece = pieceFromNum(randPiece);
+            currentPiece = getRandPiece();
             for (int i = 0; i < 3; i++) {
-                nextPieces[i] = pieceFromNum(randGen.nextInt(7));
+                nextPieces[i] = getRandPiece();
             }
         }
 
