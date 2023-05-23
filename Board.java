@@ -258,6 +258,7 @@ public class Board {
         return false;
     }
 
+    // calculates the y-coordinate of the ghost piece
     private void calcGhostY() {
         if (currentPiece == null) return;
 
@@ -273,6 +274,7 @@ public class Board {
         return ghostY;
     }
 
+    // puts the piece down
     public void instantFall() {
         if (gameOver) return;
 
@@ -287,6 +289,8 @@ public class Board {
         getNewPiece();
     }
 
+    // moves the piece down one grid or
+    // places the piece down
     private void fallPiece() {
         pieceY++;
         if (!pieceClipping()) {
@@ -363,6 +367,7 @@ public class Board {
         return pieceY;
     }
 
+    // returns a new piece based on a number
     private Piece pieceFromNum(int pieceNum) {
         switch (pieceNum) {
             case 0:
@@ -383,6 +388,7 @@ public class Board {
         return null;
     }
 
+    // returns a random piece
     private Piece getRandPiece() {
         if (randPieceIndex < 0) {
             shuffleBag();
@@ -392,6 +398,7 @@ public class Board {
         return randPiece;
     }
 
+    // generates a new piece
     private void getNewPiece() {
         pieceX = 3;
         pieceY = 0;
