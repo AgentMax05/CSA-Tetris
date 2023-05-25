@@ -43,7 +43,7 @@ public class Tetris implements KeyListener {
     static final int gridCellSize = 30;
 
     static final double moveSecondDelay = 0.075;
-    static final double initialMoveSecondDelay = 0.12;
+    static final double initialMoveSecondDelay = 0.15;
 
     private static final int WINDOW_WIDTH = 800;
     private static final int WINDOW_HEIGHT = 700;
