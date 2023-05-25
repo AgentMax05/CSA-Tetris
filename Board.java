@@ -87,7 +87,7 @@ public class Board {
     }
 
     public void update() {  
-        if (!gameOver && Duration.between(lastFall, Instant.now()).toMillis() / 1000.0 >= ((fastFall ? fastFallGravityFrames : gravityFrames) * secondsPerFrame)) {
+        if (!gameOver && Duration.between(lastFall, Instant.now()).toMillis() / 1000.0 >= ((fastFall ? Math.min(fastFallGravityFrames, gravityFrames) : gravityFrames) * secondsPerFrame)) {
             lastFall = Instant.now();
             fallPiece();
         }
