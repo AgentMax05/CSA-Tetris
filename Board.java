@@ -21,6 +21,10 @@ public class Board {
     public final int posX, posY;
 
     private Instant lastFall;
+    private Instant lockDelayStart;
+    private final double lockDelayDuration = 0.5; 
+    private int moveCount = 0;
+    private final int movesBeforeLock = 15;
 
     private int level = 1;
 
@@ -67,6 +71,17 @@ public class Board {
         randPieceIndex = pieceBag.length - 1;
     }
 
+    private void resetLockDelay() {
+        lockDelayStart = Instant.now();
+    }
+
+    private void incremementMove() {
+        if (moveCount < movesBeforeLock) {
+            moveCount++;
+            resetLockDelay();
+        }
+    }
+
     public int getScore() {
         return score;
     }
@@ -75,6 +90,16 @@ public class Board {
         if (!gameOver && Duration.between(lastFall, Instant.now()).toMillis() / 1000.0 >= ((fastFall ? fastFallGravityFrames : gravityFrames) * secondsPerFrame)) {
             lastFall = Instant.now();
             fallPiece();
+        }
+
+        if (!gameOver) {
+            pieceY++;
+            boolean colliding = pieceClipping();
+            pieceY--;
+            if (colliding && (Duration.between(lockDelayStart, Instant.now()).toMillis() / 1000.0 >= lockDelayDuration || moveCount >= movesBeforeLock)) {
+                placePiece();
+                getNewPiece();
+            }
         }
     }
 
@@ -171,6 +196,7 @@ public class Board {
             pieceX++;
         } else {
             calcGhostY();
+            incremementMove();
         }
     }
 
@@ -182,6 +208,7 @@ public class Board {
             pieceX--;
         } else {
             calcGhostY();
+            incremementMove();
         }
     }
 
@@ -194,6 +221,7 @@ public class Board {
             currentPiece.rotateCounterClockwise();
         } else {
             calcGhostY();
+            incremementMove();
         }
     }
 
@@ -206,6 +234,7 @@ public class Board {
             currentPiece.rotateClockwise();
         } else {
             calcGhostY();
+            incremementMove();
         }
     }
 
@@ -295,10 +324,10 @@ public class Board {
         pieceY++;
         if (!pieceClipping()) {
             score += fastFall ? level : 0;
+            resetLockDelay();
+            moveCount = 0;
         } else {
             pieceY--;
-            placePiece();
-            getNewPiece();
         }
     }   
 
@@ -421,5 +450,7 @@ public class Board {
         }
         
         calcGhostY();
+        resetLockDelay();
+        moveCount = 0;
     }
 }
