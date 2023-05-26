@@ -43,6 +43,8 @@ public class Board {
     private int[] pieceBag;
     private int randPieceIndex;
 
+    private boolean pieceCollidingBottom = false;
+
     public Board(int x, int y) {
         board = new Color[20][10];
         currentPiece = null;
@@ -58,6 +60,14 @@ public class Board {
         shuffleBag();
 
         getNewPiece();
+    }
+
+    // checks if the piece is colliding on the bottom,
+    // sets pieceCollidingBottom accordingly
+    private void setBottomCollide() {
+        pieceY++;
+        pieceCollidingBottom = pieceClipping();
+        pieceY--;
     }
 
     // shuffles the piece bag
@@ -76,7 +86,7 @@ public class Board {
     }
 
     private void incremementMove() {
-        if (moveCount < movesBeforeLock) {
+        if (moveCount < movesBeforeLock && pieceCollidingBottom) {
             moveCount++;
             resetLockDelay();
         }
@@ -92,14 +102,9 @@ public class Board {
             fallPiece();
         }
 
-        if (!gameOver) {
-            pieceY++;
-            boolean colliding = pieceClipping();
-            pieceY--;
-            if (colliding && (Duration.between(lockDelayStart, Instant.now()).toMillis() / 1000.0 >= lockDelayDuration || moveCount >= movesBeforeLock)) {
-                placePiece();
-                getNewPiece();
-            }
+        if (pieceCollidingBottom && !gameOver && (Duration.between(lockDelayStart, Instant.now()).toMillis() / 1000.0 >= lockDelayDuration || moveCount >= movesBeforeLock)) {
+            placePiece();
+            getNewPiece();
         }
     }
 
@@ -297,6 +302,8 @@ public class Board {
         }
         ghostY = pieceY - 1;
         pieceY = ogY;
+
+        setBottomCollide();
     }
 
     public int getGhostY() {
@@ -325,10 +332,11 @@ public class Board {
         if (!pieceClipping()) {
             score += fastFall ? level : 0;
             resetLockDelay();
-            moveCount = 0;
         } else {
             pieceY--;
         }
+
+        setBottomCollide();
     }   
 
     // places currentPiece in the board
